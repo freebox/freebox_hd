@@ -1,0 +1,221 @@
+diff -Nrua --exclude=Makefile libtimidity-0.1.0/src/instrum.c src/src/instrum.c
+--- libtimidity-0.1.0/src/instrum.c	2004-11-21 23:02:53.000000000 +0100
++++ src/src/instrum.c	2009-09-25 16:03:20.000000000 +0200
+@@ -39,6 +39,7 @@
+ #include "instrum_dls.h"
+ #include "resample.h"
+ #include "tables.h"
++#include "timidity_fp.h"
+ 
+ static void free_instrument(MidInstrument *ip)
+ {
+@@ -111,9 +112,8 @@
+   if (!sweep)
+     return 0;
+ 
+-  return
+-    (sint32) (FSCALE((double) (vib_control_ratio) * SWEEP_TUNING, SWEEP_SHIFT)
+-	     / (double)(song->rate * sweep));
++  return f52p12_to_sint32(f52p12_div_by_int(FPFSCALE((int64_t) (vib_control_ratio) * SWEEP_TUNING, SWEEP_SHIFT),
++					    (int64_t) (song->rate) * sweep));
+ 
+   /* this was overflowing with seashore.pat
+ 
+diff -Nrua --exclude=Makefile libtimidity-0.1.0/src/playmidi.c src/src/playmidi.c
+--- libtimidity-0.1.0/src/playmidi.c	2004-11-22 05:08:40.000000000 +0100
++++ src/src/playmidi.c	2009-09-25 16:27:28.000000000 +0200
+@@ -37,6 +37,7 @@
+ #include "output.h"
+ #include "mix.h"
+ #include "tables.h"
++#include "timidity_fp.h"
+ 
+ static void adjust_amplification(MidSong *song)
+ { 
+@@ -130,8 +131,8 @@
+   int 
+     sign=(song->voice[v].sample_increment < 0), /* for bidirectional loops */
+     pb=song->channel[song->voice[v].channel].pitchbend;
+-  double a;
+-  
++  f52p12 fp;
++
+   if (!song->voice[v].sample->sample_rate)
+     return;
+ 
+@@ -169,16 +170,15 @@
+ 		  song->channel[song->voice[v].channel].pitchfactor);
+     }
+ 
+-  a = FSCALE(((double)(song->voice[v].sample->sample_rate) *
+-	      (double)(song->voice[v].frequency)) /
+-	     ((double)(song->voice[v].sample->root_freq) *
+-	      (double)(song->rate)),
+-	     FRACTION_BITS);
+-
+-  if (sign) 
+-    a = -a; /* need to preserve the loop direction */
++  fp = FPSCALE(f52p12_div(f52p12_mul(f52p12_from_int(song->voice[v].sample->sample_rate),
++				     f52p12_from_int(song->voice[v].frequency)),
++			  f52p12_mul(f52p12_from_int(song->voice[v].sample->root_freq),
++				     f52p12_from_int(song->rate))),
++	       FRACTION_BITS);
++  if (sign)
++    fp = -fp;
+ 
+-  song->voice[v].sample_increment = (sint32)(a);
++  song->voice[v].sample_increment = f52p12_to_sint32(fp);
+ }
+ 
+ static void recompute_amp(MidSong *song, int v)
+@@ -186,6 +186,7 @@
+   sint32 tempamp;
+ 
+   /* TODO: use fscale */
++/*   fprintf(stderr, "recompute amp\n"); */
+ 
+   tempamp= (song->voice[v].velocity *
+ 	    song->channel[song->voice[v].channel].volume * 
+diff -Nrua --exclude=Makefile libtimidity-0.1.0/src/resample.c src/src/resample.c
+--- libtimidity-0.1.0/src/resample.c	2004-11-21 23:02:53.000000000 +0100
++++ src/src/resample.c	2009-09-25 16:04:25.000000000 +0200
+@@ -36,6 +36,7 @@
+ #include "playmidi.h"
+ #include "tables.h"
+ #include "resample.h"
++#include "timidity_fp.h"
+ 
+ /*************** resampling with fixed increment *****************/
+ 
+@@ -226,6 +227,7 @@
+   int phase, pb;
+   double a;
+ 
++  fprintf(stderr, "vibrato\n");
+   if (vp->vibrato_phase++ >= 2*MID_VIBRATO_SAMPLE_INCREMENTS-1)
+     vp->vibrato_phase=0;
+   phase=vib_phase_to_inc_ptr(vp->vibrato_phase);
+@@ -544,7 +546,8 @@
+ 
+ void pre_resample(MidSong *song, MidSample *sp)
+ {
+-  double a, xdiff;
++  f52p12 fp, mul, div;
++  f52p12 temp, xfp;
+   sint32 incr, ofs, newlen, count;
+   sint16 *newdata, *dest, *src = (sint16 *) sp->data;
+   sint16 v1, v2, v3, v4, *vptr;
+@@ -559,9 +562,11 @@
+ 	  sp->note_to_use,
+ 	  note_name[sp->note_to_use % 12], (sp->note_to_use & 0x7F) / 12);
+ 
+-  a = ((double) (sp->sample_rate) * freq_table[(int) (sp->note_to_use)]) /
+-    ((double) (sp->root_freq) * song->rate);
+-  newlen = (sint32)(sp->data_length / a);
++  mul = f52p12_from_int(((int64_t) sp->sample_rate) * freq_table[(int) (sp->note_to_use)]);
++  div = f52p12_from_int(((int64_t) sp->root_freq) * song->rate);
++  fp = f52p12_div(mul, div);
++  newlen = int_f52p12_div_to_int(sp->data_length, fp);
++
+   dest = newdata = safe_malloc(newlen >> (FRACTION_BITS - 1));
+ 
+   count = (newlen >> FRACTION_BITS) - 1;
+@@ -584,9 +589,17 @@
+       v2 = *vptr;
+       v3 = *(vptr + 1);
+       v4 = *(vptr + 2);
+-      xdiff = FSCALENEG(ofs & FRACTION_MASK, FRACTION_BITS);
+-      *dest++ = (sint16)(v2 + (xdiff / 6.0) * (-2 * v1 - 3 * v2 + 6 * v3 - v4 +
+-      xdiff * (3 * (v1 - 2 * v2 + v3) + xdiff * (-v1 + 3 * (v2 - v3) + v4))));
++
++      xfp = FPSCANENEG(ofs & FRACTION_MASK, FRACTION_BITS);
++      temp = f52p12_mul(xfp, f52p12_from_int(-v1 + 3 * (v2 - v3) + v4));
++      temp += f52p12_from_int(3 * (v1 - 2 * v2 + v3));
++      temp = f52p12_mul(xfp, temp);
++      temp += f52p12_from_int(-2 * v1 - 3 * v2 + 6 * v3 - v4);
++
++      xfp = f52p12_div_by_int(xfp, 6);
++      temp = f52p12_mul(xfp, temp) + f52p12_from_int(v2);
++
++      *dest++ = f52p12_to_sint16(temp);
+       ofs += incr;
+     }
+ 
+@@ -600,8 +613,8 @@
+     *dest++ = src[ofs >> FRACTION_BITS];
+ 
+   sp->data_length = newlen;
+-  sp->loop_start = (sint32)(sp->loop_start / a);
+-  sp->loop_end = (sint32)(sp->loop_end / a);
++  sp->loop_start = int_f52p12_div_to_int(sp->loop_start, fp);
++  sp->loop_end = int_f52p12_div_to_int(sp->loop_end, fp);
+   free(sp->data);
+   sp->data = (sample_t *) newdata;
+   sp->sample_rate = 0;
+diff -Nrua --exclude=Makefile libtimidity-0.1.0/src/timidity_fp.h src/src/timidity_fp.h
+--- libtimidity-0.1.0/src/timidity_fp.h	1970-01-01 01:00:00.000000000 +0100
++++ src/src/timidity_fp.h	2009-09-25 16:51:02.000000000 +0200
+@@ -0,0 +1,63 @@
++#ifndef TIMIDITY_FP_H__
++# define TIMIDITY_FP_H__
++
++#include "timidity_internal.h"
++
++typedef int64_t f52p12;
++
++#define BEFORE 12
++#define AFTER 52
++
++static inline sint16 f52p12_to_sint16(f52p12 fp)
++{
++   return (sint16) fp >> BEFORE;
++}
++
++static inline f52p12 f52p12_from_int(int64_t v)
++{
++   return ((f52p12) v) << BEFORE;
++}
++
++static inline double f52p12_to_double(f52p12 fp)
++{
++   double r;
++
++   r = fp / 4096.0;
++   return r;
++}
++
++static inline sint32 f52p12_to_sint32(f52p12 fp)
++{
++   return (sint32) (fp >> BEFORE);
++}
++
++static inline f52p12 f52p12_mul(f52p12 a, f52p12 b)
++{
++   return (a * b) >> BEFORE;
++}
++
++static inline f52p12 f52p12_div(f52p12 a, f52p12 b)
++{
++   return (a << BEFORE) / b;
++}
++
++static inline int64_t int_f52p12_div_to_int(int64_t a, f52p12 b)
++{
++   /*
++     Little trick, when you want an int as a result, you don't need to add more
++     number to a. It will automatically remove the decimal part.
++
++     Think about : 100 / 3.00 = 33
++    */
++   return f52p12_from_int(a) / b;
++}
++
++static inline f52p12 f52p12_div_by_int(f52p12 a, int64_t b)
++{
++   return (f52p12) a / b;
++}
++
++#define FPSCALE(a, b) f52p12_mul(a, f52p12_from_int((int64_t) 1 << b))
++#define FPSCANENEG(a, b) f52p12_mul(f52p12_from_int(a), f52p12_div(f52p12_from_int(1), f52p12_from_int((int64_t) 1 << b)))
++
++#endif

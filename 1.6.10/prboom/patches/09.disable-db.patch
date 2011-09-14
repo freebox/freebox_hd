@@ -1,0 +1,12 @@
+diff -Nrua old/src/m_misc.c src/src/m_misc.c
+--- old/src/m_misc.c	2009-11-09 17:43:02.000000000 +0100
++++ src/src/m_misc.c	2009-11-09 17:45:34.000000000 +0100
+@@ -71,6 +71,8 @@
+ #include "r_demo.h"
+ #include "r_fps.h"
+ 
++#define DISABLE_DOUBLEBUFFER
++
+ /* cph - disk icon not implemented */
+ static inline void I_BeginRead(void) {}
+ static inline void I_EndRead(void) {}

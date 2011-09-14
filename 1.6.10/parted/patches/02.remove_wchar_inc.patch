@@ -1,0 +1,39 @@
+diff -ru src-orig/parted/strlist.h src/parted/strlist.h
+--- src-orig/parted/strlist.h	2007-10-03 17:37:29.000000000 +0200
++++ src/parted/strlist.h	2007-10-03 17:39:03.000000000 +0200
+@@ -20,7 +20,14 @@
+ #ifndef STRLIST_H_INCLUDED
+ #define STRLIST_H_INCLUDED
+ 
+-#include <wchar.h>
++#include "config.h"
++#ifdef ENABLE_NLS
++# include <wchar.h>
++#else /* ENABLE_NLS */
++# ifndef wchar_t
++#  define wchar_t char
++# endif
++#endif
+ 
+ typedef struct _StrList StrList;
+ struct _StrList {
+diff -ru src-orig/parted/table.h src/parted/table.h
+--- src-orig/parted/table.h	2007-10-03 17:37:29.000000000 +0200
++++ src/parted/table.h	2007-10-03 17:39:19.000000000 +0200
+@@ -18,7 +18,15 @@
+ */
+ 
+ #define _GNU_SOURCE
+-#include <wchar.h>
++
++#include "config.h"
++#ifdef ENABLE_NLS
++# include <wchar.h>
++#else /* ENABLE_NLS */
++# ifndef wchar_t
++#  define wchar_t char
++# endif
++#endif
+ 
+ #include <stdio.h>
+ #include <stdlib.h>

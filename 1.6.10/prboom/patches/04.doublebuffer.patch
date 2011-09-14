@@ -1,0 +1,21 @@
+diff -Nrua old/src/SDL/i_video.c src/src/SDL/i_video.c
+--- old/src/SDL/i_video.c	2009-11-09 16:17:21.000000000 +0100
++++ src/src/SDL/i_video.c	2009-11-09 16:17:46.000000000 +0100
+@@ -61,6 +61,8 @@
+ #include "st_stuff.h"
+ #include "lprintf.h"
+ 
++#define DISABLE_DOUBLEBUFFER
++
+ int gl_colorbuffer_bits=16;
+ int gl_depthbuffer_bits=16;
+ 
+@@ -642,7 +644,7 @@
+     if (use_doublebuffer)
+       init_flags = SDL_DOUBLEBUF;
+     else
+-      init_flags = SDL_SWSURFACE;
++      init_flags = SDL_HWSURFACE;
+ #ifndef _DEBUG
+     init_flags |= SDL_HWPALETTE;
+ #endif

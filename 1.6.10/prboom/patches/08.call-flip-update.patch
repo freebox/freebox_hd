@@ -1,0 +1,15 @@
+diff -Nrua old/src/SDL/i_video.c src/src/SDL/i_video.c
+--- old/src/SDL/i_video.c	2009-11-09 17:22:06.000000000 +0100
++++ src/src/SDL/i_video.c	2009-11-09 17:23:13.000000000 +0100
+@@ -412,7 +412,10 @@
+     I_UploadNewPalette(newpal);
+     newpal = NO_PALETTE_CHANGE;
+   }
+-  SDL_Flip(screen);
++  if (use_doublebuffer)
++    SDL_Flip(screen);
++  else
++    SDL_UpdateRect(screen, 0, 0, 0, 0);
+ }
+ 
+ //

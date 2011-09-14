@@ -1,0 +1,35 @@
+diff -ruw src.orig/src/SDL/i_video.c src/src/SDL/i_video.c
+--- src.orig/src/SDL/i_video.c	2006-10-17 15:57:53.000000000 +0200
++++ src/src/SDL/i_video.c	2006-10-17 16:01:51.000000000 +0200
+@@ -636,6 +636,7 @@
+     init_flags |= SDL_FULLSCREEN;
+ 
+   if (V_GetMode() == VID_MODEGL) {
++#ifdef GL_DOOM
+     SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 0 );
+     SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 0 );
+     SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 0 );
+@@ -649,6 +650,7 @@
+     SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, gl_colorbuffer_bits );
+     SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, gl_depthbuffer_bits );
+     screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, gl_colorbuffer_bits, init_flags);
++#endif
+   } else {
+     screen = SDL_SetVideoMode(SCREENWIDTH, SCREENHEIGHT, 8, init_flags);
+   }
+@@ -681,6 +683,7 @@
+   R_InitBuffer(SCREENWIDTH, SCREENHEIGHT);
+ 
+   if (V_GetMode() == VID_MODEGL) {
++#ifdef GL_DOOM
+     int temp;
+     lprintf(LO_INFO,"SDL OpenGL PixelFormat:\n");
+     SDL_GL_GetAttribute( SDL_GL_RED_SIZE, &temp );
+@@ -705,7 +708,6 @@
+     lprintf(LO_INFO,"    SDL_GL_BUFFER_SIZE: %i\n",temp);
+     SDL_GL_GetAttribute( SDL_GL_DEPTH_SIZE, &temp );
+     lprintf(LO_INFO,"    SDL_GL_DEPTH_SIZE: %i\n",temp);
+-#ifdef GL_DOOM
+     gld_Init(SCREENWIDTH, SCREENHEIGHT);
+ #endif
+   }

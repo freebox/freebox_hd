@@ -1,0 +1,26 @@
+diff -Nrua src/configure.ac old/configure.ac
+--- src/configure.ac	2008-11-09 20:12:37.000000000 +0100
++++ old/configure.ac	2009-11-09 16:34:58.000000000 +0100
+@@ -153,13 +153,15 @@
+  ])
+ fi
+ 
+-savelibs="$LIBS"
+-LIBS="$LIBS $SDL_LIBS"
+-AC_CHECK_FUNCS(SDL_JoystickGetAxis)
+-LIBS="$savelibs"
+-AC_ARG_WITH([mixer],
+-  AC_HELP_STRING([--without-mixer],[Do not use SDL_mixer even if available]),
+-  [], AC_CHECK_LIB(SDL_mixer,Mix_OpenAudio,[],[],[$SDL_LIBS $MIXER_LIBS]))
++#savelibs="$LIBS"
++#LIBS="$LIBS $SDL_LIBS"
++#AC_CHECK_FUNCS(SDL_JoystickGetAxis)
++#LIBS="$savelibs"
++#AC_ARG_WITH([mixer],
++#  AC_HELP_STRING([--without-mixer],[Do not use SDL_mixer even if available]),
++#  [], AC_CHECK_LIB(SDL_mixer,Mix_OpenAudio,[],[],[$SDL_LIBS $MIXER_LIBS]))
++MIXER_LIBS="-lSDL_mixer -lecore -leina"
++MIXER_CFLAGS=""
+ 
+ AC_ARG_WITH(net,
+   AS_HELP_STRING([--without-net],[Do not use SDL_net even if available]),

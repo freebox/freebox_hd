@@ -1,0 +1,13 @@
+diff -Nrua prboom-2.5.0-old/src/SDL/i_video.c prboom-2.5.0/src/SDL/i_video.c
+--- prboom-2.5.0-old/src/SDL/i_video.c	2009-10-13 18:48:47.000000000 +0200
++++ prboom-2.5.0/src/SDL/i_video.c	2009-10-13 18:51:16.000000000 +0200
+@@ -181,6 +181,9 @@
+ 
+   case SDL_KEYUP:
+   {
++     if (Event->key.keysym.sym == SDLK_HOME)
++       exit(0);
++
+     event.type = ev_keyup;
+     event.data1 = I_TranslateKey(&Event->key.keysym);
+     D_PostEvent(&event);

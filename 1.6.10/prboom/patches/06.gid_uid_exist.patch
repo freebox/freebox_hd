@@ -1,0 +1,12 @@
+diff -Nrua old/configure.ac src/configure.ac
+--- old/configure.ac	2009-11-09 16:44:24.000000000 +0100
++++ src/configure.ac	2009-11-09 16:44:33.000000000 +0100
+@@ -85,8 +85,6 @@
+ fi
+ 
+ dnl --- Header files, typedefs, structures
+-AC_TYPE_UID_T
+-AC_TYPE_SIZE_T
+ AC_DECL_SYS_SIGLIST
+ AC_HEADER_SYS_WAIT
+ AC_CHECK_HEADERS(unistd.h asm/byteorder.h sched.h)

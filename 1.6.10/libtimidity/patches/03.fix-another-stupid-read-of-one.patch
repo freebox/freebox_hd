@@ -1,0 +1,230 @@
+--- old/src/timidity.c	2009-09-23 17:13:24.000000000 +0200
++++ src/src/timidity.c	2009-09-23 18:03:08.000000000 +0200
+@@ -26,6 +26,10 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <sys/mman.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
+ 
+ #include "timidity.h"
+ #include "timidity_internal.h"
+@@ -47,16 +51,18 @@
+ 
+ /* Quick-and-dirty fgets() replacement. */
+ 
+-static char *__fgets(char *s, int size, FILE *fp)
++static char *__fgets(char *s, int size, const char *map, int length, int *position)
+ {
+     int num_read = 0;
+     int newline = 0;
+ 
+     while (num_read < size && !newline)
+     {
+-	if (fread(&s[num_read], 1, 1, fp) != 1)
++        if (*position >= length)
+ 	    break;
+ 
++	s[num_read] = map[(*position)++];
++
+ 	/* Unlike fgets(), don't store newline. Under Windows/DOS we'll
+ 	 * probably get an extra blank line for every line that's being
+ 	 * read, but that should be ok.
+@@ -77,11 +83,14 @@
+ 
+ static int read_config_file(char *name)
+ {
++  struct stat buf;
+   FILE *fp;
++  const char *map;
+   char tmp[1024], *w[MAXWORDS], *cp;
+   MidToneBank *bank=0;
+   int i, j, k, line=0, words;
+   static int rcf_count=0;
++  int position;
+ 
+   if (rcf_count>50)
+   {
+@@ -92,7 +101,22 @@
+   if (!(fp=open_file(name)))
+    return -1;
+ 
+-  while (__fgets(tmp, sizeof(tmp), fp))
++  if (fstat(fileno(fp), &buf) != 0)
++    {
++       fclose(fp);
++       return -1;
++    }
++
++  map = mmap(NULL, buf.st_size, PROT_READ, MAP_PRIVATE, fileno(fp), 0);
++  if (map == MAP_FAILED)
++    {
++       fclose(fp);
++       return -1;
++    }
++
++  position = 0;
++
++  while (__fgets(tmp, sizeof(tmp), map, buf.st_size, &position))
+   {
+     line++;
+     w[words=0]=strtok(tmp, " \t\240");
+@@ -204,7 +228,7 @@
+       if (words < 2)
+       {
+ 	DEBUG_MSG("%s: line %d: No directory given\n", name, line);
+-	return -2;
++	goto on_error;
+       }
+       for (i=1; i<words; i++)
+ 	add_to_pathlist(w[i]);
+@@ -214,7 +238,7 @@
+       if (words < 2)
+       {
+ 	DEBUG_MSG("%s: line %d: No file name given\n", name, line);
+-	return -2;
++	goto on_error;
+       }
+       for (i=1; i<words; i++)
+       {
+@@ -229,7 +253,7 @@
+       {
+ 	DEBUG_MSG("%s: line %d: Must specify exactly one patch name\n",
+ 		name, line);
+-	return -2;
++	goto on_error;
+       }
+       strncpy(def_instr_name, w[1], 255);
+       def_instr_name[255]='\0';
+@@ -239,14 +263,14 @@
+       if (words < 2)
+       {
+ 	DEBUG_MSG("%s: line %d: No drum set number given\n", name, line);
+-	return -2;
++	goto on_error;
+       }
+       i=atoi(w[1]);
+       if (i<0 || i>127)
+       {
+ 	DEBUG_MSG("%s: line %d: Drum set must be between 0 and 127\n",
+ 		name, line);
+-	return -2;
++	goto on_error;
+       }
+       if (!master_drumset[i])
+       {
+@@ -262,14 +286,14 @@
+       if (words < 2)
+       {
+ 	DEBUG_MSG("%s: line %d: No bank number given\n", name, line);
+-	return -2;
++	goto on_error;
+       }
+       i=atoi(w[1]);
+       if (i<0 || i>127)
+       {
+ 	DEBUG_MSG("%s: line %d: Tone bank must be between 0 and 127\n",
+ 		name, line);
+-	return -2;
++	goto on_error;
+       }
+       if (!master_tonebank[i])
+       {
+@@ -285,20 +309,20 @@
+       if ((words < 2) || (*w[0] < '0' || *w[0] > '9'))
+       {
+ 	DEBUG_MSG("%s: line %d: syntax error\n", name, line);
+-	return -2;
++	goto on_error;
+       }
+       i=atoi(w[0]);
+       if (i<0 || i>127)
+       {
+ 	DEBUG_MSG("%s: line %d: Program must be between 0 and 127\n",
+ 		name, line);
+-	return -2;
++	goto on_error;
+       }
+       if (!bank)
+       {
+ 	DEBUG_MSG("%s: line %d: Must specify tone bank or drum set before assignment\n",
+ 		name, line);
+-	return -2;
++	goto on_error;
+       }
+       if (bank->tone[i].name)
+ 	free(bank->tone[i].name);
+@@ -312,7 +336,7 @@
+ 	if (!(cp=strchr(w[j], '=')))
+ 	{
+ 	  DEBUG_MSG("%s: line %d: bad patch option %s\n", name, line, w[j]);
+-	  return -2;
++	  goto on_error;
+ 	}
+ 	*cp++=0;
+ 	if (!strcmp(w[j], "amp"))
+@@ -322,7 +346,7 @@
+ 	  {
+ 	    DEBUG_MSG("%s: line %d: amplification must be between 0 and %d\n",
+ 		    name, line, MAX_AMPLIFICATION);
+-	    return -2;
++	    goto on_error;
+ 	  }
+ 	  bank->tone[i].amp=k;
+ 	}
+@@ -333,7 +357,7 @@
+ 	  {
+ 	    DEBUG_MSG("%s: line %d: note must be between 0 and 127\n",
+ 		    name, line);
+-	    return -2;
++	    goto on_error;
+ 	  }
+ 	  bank->tone[i].note=k;
+ 	}
+@@ -351,7 +375,7 @@
+ 	  {
+ 	    DEBUG_MSG("%s: line %d: panning must be left, right, center, or between -100 and 100\n",
+ 		    name, line);
+-	    return -2;
++	    goto on_error;
+ 	  }
+ 	  bank->tone[i].pan=k;
+ 	}
+@@ -364,7 +388,7 @@
+ 	  else
+ 	  {
+ 	    DEBUG_MSG("%s: line %d: keep must be env or loop\n", name, line);
+-	    return -2;
++	    goto on_error;
+ 	  }
+ 	}
+ 	else if (!strcmp(w[j], "strip"))
+@@ -379,19 +403,24 @@
+ 	  {
+ 	    DEBUG_MSG("%s: line %d: strip must be env, loop, or tail\n",
+ 		    name, line);
+-	    return -2;
++	    goto on_error;
+ 	  }
+ 	}
+ 	else
+ 	{
+ 	  DEBUG_MSG("%s: line %d: bad patch option %s\n", name, line, w[j]);
+-	  return -2;
++	  goto on_error;
+ 	}
+       }
+     }
+   }
+   fclose(fp);
+   return 0;
++
++ on_error:
++  munmap((char*) map, buf.st_size);
++  fclose(fp);
++  return -2;
+ }
+ 
+ int mid_init_no_config()

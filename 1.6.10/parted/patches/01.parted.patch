@@ -1,0 +1,158 @@
+diff -ru parted-orig/libparted/labels/Makefile.in src/libparted/labels/Makefile.in
+--- parted-orig/libparted/labels/Makefile.in	2006-05-15 12:11:23.000000000 +0200
++++ src/libparted/labels/Makefile.in	2006-06-20 22:29:59.000000000 +0200
+@@ -52,8 +52,7 @@
+ CONFIG_CLEAN_FILES =
+ LTLIBRARIES = $(noinst_LTLIBRARIES)
+ liblabels_la_DEPENDENCIES =
+-am_liblabels_la_OBJECTS = rdb.lo bsd.lo efi_crc32.lo dos.lo dvh.lo \
+-	gpt.lo loop.lo mac.lo pc98.lo sun.lo
++am_liblabels_la_OBJECTS = dos.lo loop.lo
+ liblabels_la_OBJECTS = $(am_liblabels_la_OBJECTS)
+ DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
+ depcomp = $(SHELL) $(top_srcdir)/depcomp
+@@ -197,17 +196,8 @@
+ liblabels_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+  			-release $(LT_RELEASE)
+ 
+-liblabels_la_SOURCES = rdb.c		\
+-			bsd.c  		\
+-			efi_crc32.c	\
+-			dos.c  		\
+-			dvh.h		\
+-			dvh.c  		\
+-			gpt.c  		\
+-			loop.c 		\
+-			mac.c  		\
+-			pc98.c 		\
+-			sun.c
++liblabels_la_SOURCES =	dos.c  		\
++			loop.c
+ 
+ liblabels_la_LIBADD = @OS_LIBS@
+ INCLUDES = $(partedincludedir) @INTLINCS@
+@@ -262,16 +252,8 @@
+ distclean-compile:
+ 	-rm -f *.tab.c
+ 
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bsd.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dos.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dvh.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/efi_crc32.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gpt.Plo@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loop.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mac.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pc98.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rdb.Plo@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sun.Plo@am__quote@
+ 
+ .c.o:
+ @am__fastdepCC_TRUE@	if $(COMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+diff -ru parted-orig/libparted/libparted.c src/libparted/libparted.c
+--- parted-orig/libparted/libparted.c	2006-05-15 11:19:52.000000000 +0200
++++ src/libparted/libparted.c	2006-06-20 22:31:54.000000000 +0200
+@@ -80,32 +80,14 @@
+ 	return 1;
+ }
+ 
+-extern void ped_disk_bsd_init ();
+-extern void ped_disk_dvh_init ();
+-extern void ped_disk_gpt_init ();
+ extern void ped_disk_loop_init ();
+-extern void ped_disk_mac_init ();
+ extern void ped_disk_msdos_init ();
+-extern void ped_disk_pc98_init ();
+-extern void ped_disk_sun_init ();
+-extern void ped_disk_amiga_init ();
+ 
+ static void
+ init_disk_types ()
+ {
+ 	ped_disk_loop_init ();	/* must be last in the probe list */
+-
+-	ped_disk_sun_init ();
+-#ifdef ENABLE_PC98
+-	ped_disk_pc98_init ();
+-#endif
+ 	ped_disk_msdos_init ();
+-	ped_disk_mac_init ();
+-	ped_disk_gpt_init ();
+-	ped_disk_dvh_init ();
+-	ped_disk_bsd_init ();
+-	ped_disk_amiga_init ();
+-
+ }
+ 
+ #ifdef ENABLE_FS
+@@ -136,30 +118,14 @@
+ }
+ #endif /* ENABLE_FS */
+ 
+-extern void ped_disk_bsd_done ();
+-extern void ped_disk_dvh_done ();
+-extern void ped_disk_gpt_done ();
+ extern void ped_disk_loop_done ();
+-extern void ped_disk_mac_done ();
+ extern void ped_disk_msdos_done ();
+-extern void ped_disk_pc98_done ();
+-extern void ped_disk_sun_done ();
+-extern void ped_disk_amiga_done ();
+ 
+ static void
+ done_disk_types ()
+ {
+-	ped_disk_sun_done ();
+-#ifdef ENABLE_PC98
+-	ped_disk_pc98_done ();
+-#endif
+ 	ped_disk_msdos_done ();
+-	ped_disk_mac_done ();
+ 	ped_disk_loop_done ();
+-	ped_disk_gpt_done ();
+-	ped_disk_dvh_done ();
+-	ped_disk_bsd_done ();
+-	ped_disk_amiga_done ();
+ }
+ 
+ static void _init() __attribute__ ((constructor));
+diff -ru parted-orig/libparted/Makefile.in src/libparted/Makefile.in
+--- parted-orig/libparted/Makefile.in	2006-05-15 12:11:19.000000000 +0200
++++ src/libparted/Makefile.in	2006-06-20 22:25:14.000000000 +0200
+@@ -59,7 +59,7 @@
+ am__installdirs = "$(DESTDIR)$(libdir)"
+ libLTLIBRARIES_INSTALL = $(INSTALL)
+ LTLIBRARIES = $(lib_LTLIBRARIES)
+-libparted_la_DEPENDENCIES = fs/libfs.la labels/liblabels.la
++libparted_la_DEPENDENCIES = labels/liblabels.la
+ am_libparted_la_OBJECTS = debug.lo device.lo exception.lo filesys.lo \
+ 	libparted.lo timer.lo unit.lo disk.lo geom.lo constraint.lo \
+ 	natmath.lo @OS@.lo
+@@ -208,7 +208,7 @@
+ sharedstatedir = @sharedstatedir@
+ sysconfdir = @sysconfdir@
+ target_alias = @target_alias@
+-SUBDIRS = labels fs
++SUBDIRS = labels # fs
+ partedincludedir = -I$(top_srcdir)/include
+ lib_LTLIBRARIES = libparted.la
+ libparted_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+@@ -233,7 +233,6 @@
+ 				arch/beos.c
+ 
+ libparted_la_LIBADD = @OS_LIBS@			\
+-			fs/libfs.la			\
+ 			labels/liblabels.la
+ 
+ EXTRA_DIST = mbr.s
+diff -ru parted-orig/Makefile.in src/Makefile.in
+--- parted-orig/Makefile.in	2006-05-15 12:11:23.000000000 +0200
++++ src/Makefile.in	2006-06-20 22:34:37.000000000 +0200
+@@ -205,7 +205,7 @@
+ sysconfdir = @sysconfdir@
+ target_alias = @target_alias@
+ ACLOCAL_AMFLAGS = -I m4
+-SUBDIRS = po libparted parted partprobe include doc debug
++SUBDIRS = po libparted parted partprobe include doc
+ EXTRA_DIST = config.rpath	\
+ 		ABOUT-NLS	\
+ 		AUTHORS		\

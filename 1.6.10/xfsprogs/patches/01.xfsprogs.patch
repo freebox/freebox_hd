@@ -1,0 +1,32 @@
+diff -Nru xfsprogs-2.7.11/configure src/configure
+--- xfsprogs-2.7.11/configure	2006-01-17 04:47:55.000000000 +0100
++++ src/configure	2006-05-17 19:21:11.000000000 +0200
+@@ -2369,7 +2369,7 @@
+   ;;
+   *)
+   as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+-as_dummy="/usr/bin:/usr/local/bin:/usr/freeware/bin"
++as_dummy="$PWD/:/usr/bin:/usr/local/bin:/usr/freeware/bin"
+ for as_dir in $as_dummy
+ do
+   IFS=$as_save_IFS
+diff -Nru xfsprogs-2.7.11/include/builddefs.in src/include/builddefs.in
+--- xfsprogs-2.7.11/include/builddefs.in	2006-01-17 04:46:48.000000000 +0100
++++ src/include/builddefs.in	2006-05-17 18:45:48.000000000 +0200
+@@ -65,7 +65,7 @@
+ ECHO		= @echo@
+ SORT		= @sort@
+ LN_S		= @LN_S@
+-LIBTOOL		= @LIBTOOL@
++LIBTOOL		= @LIBTOOL@
+ MAKEDEPEND	= @makedepend@
+ 
+ MSGFMT		= @msgfmt@
+@@ -107,6 +107,7 @@
+ 	  -DPACKAGE=\"$(PKG_NAME)\" -I$(TOPDIR)/include
+ 
+ # First, Global, Platform, Local CFLAGS
++CFLAGS += $(MYCFLAGS)
+ CFLAGS += $(FCFLAGS) $(GCFLAGS) $(PCFLAGS) $(LCFLAGS)
+ 
+ include $(TOPDIR)/include/buildmacros

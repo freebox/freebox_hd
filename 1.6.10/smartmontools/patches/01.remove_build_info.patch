@@ -1,0 +1,15 @@
+diff -ruw src.orig//smartctl.cpp src/smartctl.cpp
+--- src.orig//smartctl.cpp	2011-03-30 20:27:12.593201422 +0200
++++ src/smartctl.cpp	2011-03-30 20:27:32.290798395 +0200
+@@ -106,11 +106,6 @@
+   PrintOneCVS(scsiprint_c_cvsid);
+   PrintOneCVS(smartctl_c_cvsid);
+   PrintOneCVS(utility_c_cvsid);
+-  pout("\nsmartmontools release " PACKAGE_VERSION " dated " SMARTMONTOOLS_RELEASE_DATE " at " SMARTMONTOOLS_RELEASE_TIME "\n");
+-  pout("smartmontools build host: " SMARTMONTOOLS_BUILD_HOST "\n");
+-  pout("smartmontools build configured: " SMARTMONTOOLS_CONFIGURE_DATE "\n");
+-  pout("smartctl compile dated " __DATE__ " at "__TIME__ "\n");
+-  pout("smartmontools configure arguments: %s\n", configargs);
+   return;
+ }
+ 
